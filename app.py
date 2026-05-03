@@ -114,8 +114,28 @@ def gerar_referencia(data):
 # ===== RESULTADO DOI =====
 if st.session_state.data and not st.session_state.resultados_busca:
 
-	st.success("Referência:")
-	st.markdown(gerar_referencia(st.session_state.data))
+	data = st.session_state.data
+
+	titulo_item = data.get("title", ["Sem título"])[0]
+
+	autores = data.get("author", [])
+	if autores:
+		primeiro = autores[0]
+		nome = f"{primeiro.get('family', '').upper()}, {primeiro.get('given', '').split()[0][0]}."
+		autores_str = f"{nome} et al."
+	else:
+		autores_str = "Autor desconhecido"
+
+	data_parts = data.get("issued", {}).get("date-parts", [[None]])
+	ano = data_parts[0][0]
+
+	st.write("### Resultado:")
+
+	st.markdown(f"**{titulo_item}**")
+	st.markdown(f"{autores_str} • {ano}")
+
+	ref = gerar_referencia(data)
+	st.success(f"Referência:\n\n{ref}")
 
 # ===== LISTA DE TÍTULOS =====
 if st.session_state.resultados_busca:
@@ -152,8 +172,7 @@ if st.session_state.resultados_busca:
 
 		# 👇 FORA DA COLUNA → largura normal
 		if st.session_state.selecionado == key_id:
-			st.success("Referência:")
-			st.markdown(gerar_referencia(item))
+			st.success(f"Referência:\n\n{gerar_referencia(item)}")
 
 		st.markdown("---")
 
