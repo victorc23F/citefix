@@ -11,6 +11,9 @@ if "data" not in st.session_state:
 if "selecionado" not in st.session_state:
 	st.session_state.selecionado = None
 
+if "historico" not in st.session_state:
+	st.session_state.historico = []
+
 st.title("CiteFix - Gerador de Referências")
 
 # ===== FORM =====
@@ -111,6 +114,30 @@ def gerar_referencia(data):
 
 	return referencia.rstrip(".") + "."
 
+def gerar_citacao(autores, ano):
+	if not autores:
+		return f"(Autor desconhecido, {ano})"
+
+	nomes = []
+
+	for a in autores:
+		sobrenome = a.get("family", "")
+		if sobrenome:
+			nomes.append(sobrenome.title())
+
+	if len(nomes) <= 3:
+		# até 3 autores: todos aparecem
+		if len(nomes) == 1:
+			return f"({nomes[0]}, {ano})"
+		elif len(nomes) == 2:
+			return f"({nomes[0]}; {nomes[1]}, {ano})"
+		else:
+			return f"({nomes[0]}; {nomes[1]};  {nomes[2]}, {ano})"
+
+	else:
+		# 4 ou mais: primeiro + et al.
+		return f"({nomes[0]} et al., {ano})"
+
 # ===== RESULTADO DOI =====
 if st.session_state.data and not st.session_state.resultados_busca:
 
@@ -132,10 +159,21 @@ if st.session_state.data and not st.session_state.resultados_busca:
 	st.write("### Resultado:")
 
 	st.markdown(f"**{titulo_item}**")
-	st.markdown(f"{autores_str} • {ano}")
+
+	autores = data.get("author", [])
+	data_parts = data.get("issued", {}).get("date-parts", [[None]])
+	ano = data_parts[0][0]
+
+	citacao = gerar_citacao(autores, ano)
 
 	ref = gerar_referencia(data)
+
+	st.markdown(f"**Citação no texto:** {citacao}")
+
 	st.success(f"Referência:\n\n{ref}")
+
+	if ref not in st.session_state.historico:
+		st.session_state.historico.append(ref)
 
 # ===== LISTA DE TÍTULOS =====
 if st.session_state.resultados_busca:
@@ -161,8 +199,10 @@ if st.session_state.resultados_busca:
 		col1, col2 = st.columns([8, 2])
 
 		with col1:
+			citacao_preview = gerar_citacao(autores, ano)
+
 			st.markdown(f"**{titulo_item}**")
-			st.markdown(f"{autores_str} • {ano}")
+			st.markdown(f"Citação no texto: {citacao_preview}")
 
 		with col2:
 			key_id = item.get("DOI", titulo_item)
@@ -172,10 +212,32 @@ if st.session_state.resultados_busca:
 
 		# 👇 FORA DA COLUNA → largura normal
 		if st.session_state.selecionado == key_id:
-			st.success(f"Referência:\n\n{gerar_referencia(item)}")
+			ref = gerar_referencia(item)
+
+			# ===== pega dados para citação =====
+			autores = item.get("author", [])
+			data_parts = item.get("issued", {}).get("date-parts", [[None]])
+			ano = data_parts[0][0]
+
+			citacao = gerar_citacao(autores, ano)
+
+			# ===== exibição =====
+			st.success(f"Referência:\n\n{ref}")
+
+			# ===== histórico =====
+			if ref not in st.session_state.historico:
+				st.session_state.historico.append(ref)
 
 		st.markdown("---")
 
 # ===== MENSAGEM FINAL =====
 if submit and not entrada:
 	st.write("Digite um DOI ou título.")
+
+st.write("## 📚 Histórico de Referências")
+
+historico_ordenado = sorted(st.session_state.historico, key=str.lower)
+
+for ref in historico_ordenado:
+	st.markdown(ref)
+	st.write("")  # espaço entre referências
