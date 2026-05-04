@@ -198,7 +198,7 @@ if st.session_state.resultados_busca:
     			nome = family
 			else:
     			nome = "Autor desconhecido"
-			autores_str = f"{nome} et al."
+				autores_str = f"{nome} et al."
 		else:
 			autores_str = "Autor desconhecido"
 
