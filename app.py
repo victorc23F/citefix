@@ -187,7 +187,17 @@ if st.session_state.resultados_busca:
 		autores = item.get("author", [])
 		if autores:
 			primeiro = autores[0]
-			nome = f"{primeiro.get('family', '').upper()}, {primeiro.get('given', '').split()[0][0]}."
+			family = primeiro.get('family', '').upper()
+			given = primeiro.get('given', '')
+
+			inicial = given.split()[0][0] if given and given.split() else ""
+
+			if family and inicial:
+    			nome = f"{family}, {inicial}."
+			elif family:
+    			nome = family
+			else:
+    			nome = "Autor desconhecido"
 			autores_str = f"{nome} et al."
 		else:
 			autores_str = "Autor desconhecido"
