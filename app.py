@@ -54,6 +54,21 @@ if submit:
 			else:
 				st.error("Erro ao buscar título.")
 
+def formatar_primeiro_autor(autor):
+    family = autor.get("family", "")
+    given = autor.get("given", "")
+
+    if not family:
+        return "Autor desconhecido"
+
+    family = family.upper()
+
+    if given and given.split():
+        inicial = given.split()[0][0].upper()
+        return f"{family}, {inicial}."
+    
+    return family
+
 # ===== FUNÇÃO DE GERAR REFERÊNCIA =====
 def gerar_referencia(data):
 
@@ -115,28 +130,25 @@ def gerar_referencia(data):
 	return referencia.rstrip(".") + "."
 
 def gerar_citacao(autores, ano):
-	if not autores:
-		return f"(Autor desconhecido, {ano})"
 
-	nomes = []
+    if not autores:
+        return f"(Autor desconhecido, {ano})"
 
-	for a in autores:
-		sobrenome = a.get("family", "")
-		if sobrenome:
-			nomes.append(sobrenome.title())
+    nomes = []
 
-	if len(nomes) <= 3:
-		# até 3 autores: todos aparecem
-		if len(nomes) == 1:
-			return f"({nomes[0]}, {ano})"
-		elif len(nomes) == 2:
-			return f"({nomes[0]}; {nomes[1]}, {ano})"
-		else:
-			return f"({nomes[0]}; {nomes[1]};  {nomes[2]}, {ano})"
+    for a in autores:
+        sobrenome = a.get("family", "")
+        if sobrenome:
+            nomes.append(sobrenome.title())
 
-	else:
-		# 4 ou mais: primeiro + et al.
-		return f"({nomes[0]} et al., {ano})"
+    if len(nomes) == 0:
+        return f"(Autor desconhecido, {ano})"
+
+    elif len(nomes) <= 3:
+        return f"({'; '.join(nomes)}, {ano})"
+
+    else:
+        return f"({nomes[0]} et al., {ano})"
 
 # ===== RESULTADO DOI =====
 if st.session_state.data and not st.session_state.resultados_busca:
@@ -148,7 +160,7 @@ if st.session_state.data and not st.session_state.resultados_busca:
 	autores = data.get("author", [])
 	if autores:
 		primeiro = autores[0]
-		nome = f"{primeiro.get('family', '').upper()}, {primeiro.get('given', '').split()[0][0]}."
+		nome = formatar_primeiro_autor(primeiro)
 		autores_str = f"{nome} et al."
 	else:
 		autores_str = "Autor desconhecido"
@@ -187,7 +199,7 @@ if st.session_state.resultados_busca:
 		autores = item.get("author", [])
 		if autores:
 			primeiro = autores[0]
-			nome = f"{primeiro.get('family', '').upper()}, {primeiro.get('given', '').split()[0][0]}."
+			nome = formatar_primeiro_autor(primeiro)
 			autores_str = f"{nome} et al."
 		else:
 			autores_str = "Autor desconhecido"
