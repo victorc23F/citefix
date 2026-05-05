@@ -13,6 +13,12 @@ if "selecionado" not in st.session_state:
 
 if "historico" not in st.session_state:
 	st.session_state.historico = []
+      
+if "ref_ignorar" not in st.session_state:
+	st.session_state.ref_ignorar = None
+
+if "limpou_tudo" not in st.session_state:
+	st.session_state.limpou_tudo = False
 
 st.title("CiteFix - Gerador de Referências")
 
@@ -26,6 +32,8 @@ if submit:
 	st.session_state.resultados_busca = None
 	st.session_state.data = None
 	st.session_state.selecionado = None
+	st.session_state.ref_ignorar = None
+	st.session_state.limpou_tudo = False
 
 	if entrada:
 
@@ -71,68 +79,97 @@ def formatar_primeiro_autor(autor):
 
 # ===== FUNÇÃO DE GERAR REFERÊNCIA =====
 def gerar_referencia(data):
+    # 1. Tratamento do Título e Pontuação
+    titulo = data.get("title", ["Sem título"])[0].strip()
+    
+    # Se o título já terminar em pontuação, não adiciona o ponto final extra
+    if titulo and titulo[-1] in ["?", "!", "."]:
+        titulo_com_pontuacao = titulo
+    else:
+        titulo_com_pontuacao = f"{titulo}."
 
-	titulo = data.get("title", ["Sem título"])[0]
-	autores = data.get("author", [])
-	data_parts = data.get("issued", {}).get("date-parts", [[None]])
-	ano = data_parts[0][0]
-	mes = data_parts[0][1] if len(data_parts[0]) > 1 else ""
-	dia = data_parts[0][2] if len(data_parts[0]) > 2 else ""
-	journal = data.get("container-title", [""])[0]
+    # 2. Tratamento da Data (Ano vazio = [s.d.] - Sem Data)
+    data_parts = data.get("issued", {}).get("date-parts", [[None]])
+    ano = data_parts[0][0] if len(data_parts[0]) > 0 and data_parts[0][0] is not None else "[s.d.]"
+    mes = data_parts[0][1] if len(data_parts[0]) > 1 else ""
+    dia = data_parts[0][2] if len(data_parts[0]) > 2 else ""
+    
+    journal = data.get("container-title", [""])[0]
+    meses = ["jan.", "fev.", "mar.", "abr.", "maio", "jun.", "jul.", "ago.", "set.", "out.", "nov.", "dez."]
+    mes_formatado = meses[mes-1] if mes and isinstance(mes, int) and mes <= 12 else ""
 
-	meses = ["jan.", "fev.", "mar.", "abr.", "maio", "jun.", "jul.", "ago.", "set.", "out.", "nov.", "dez."]
-	mes_formatado = meses[mes-1] if mes and mes <= 12 else ""
+    volume = data.get("volume", "")
+    numero = data.get("issue", "")
+    
+    # 3. Tratamento de Páginas vs Article Number
+    paginas = data.get("page", "")
+    article_number = data.get("article-number", "") 
 
-	volume = data.get("volume", "")
-	numero = data.get("issue", "")
-	paginas = data.get("page", "")
+    journal_formatado = f"*{journal}*" if journal else ""
 
-	journal_formatado = f"*{journal}*"
+    # 4. Tratamento de Autores (Se não houver autor)
+    autores = data.get("author", [])
+    autores_formatados = []
+    
+    for autor in autores:
+        sobrenome = autor.get("family", "")
+        nome = autor.get("given", "")
+        if sobrenome: # Garante que só processa se o sobrenome existir
+            iniciais = " ".join([n[0].upper() + "." for n in nome.split() if n])
+            autores_formatados.append(f"{sobrenome.upper()}, {iniciais}")
 
-	autores_formatados = []
-	for autor in autores:
-		sobrenome = autor.get("family", "")
-		nome = autor.get("given", "")
-		iniciais = " ".join([n[0].upper() + "." for n in nome.split() if n])
-		autores_formatados.append(f"{sobrenome.upper()}, {iniciais}")
+    if len(autores_formatados) >= 4:
+        autores_str = autores_formatados[0] + " et al."
+    elif len(autores_formatados) > 0:
+        autores_str = "; ".join(autores_formatados).rstrip(".")
+    else:
+        autores_str = "" # Sem autor
 
-	if len(autores_formatados) >= 4:
-		autores_str = autores_formatados[0] + " et al."
-	else:
-		autores_str = "; ".join(autores_formatados).rstrip(".")
+    # 5. Montagem da Referência
+    if autores_str:
+        if autores_str.endswith("et al."):
+            referencia = f"{autores_str} {titulo_com_pontuacao}"
+        else:
+            referencia = f"{autores_str}. {titulo_com_pontuacao}"
+    else:
+        # Se não tem autor, a ABNT começa pelo título
+        referencia = f"{titulo_com_pontuacao}"
 
-	if autores_str.endswith("et al."):
-		referencia = f"{autores_str} {titulo}. {journal_formatado}"
-	else:
-		referencia = f"{autores_str}. {titulo}. {journal_formatado}"
+    if journal_formatado:
+        referencia += f" {journal_formatado}"
 
-	if volume:
-		referencia += f", v. {volume}"
+    if volume:
+        referencia += f", v. {volume}"
 
-	if numero:
-		referencia += f", n. {numero}"
+    if numero:
+        referencia += f", n. {numero}"
 
-	if paginas:
-		paginas = paginas.strip()
+    # Adiciona a página ou o article number
+    if paginas:
+        paginas = paginas.strip()
+        if "-" in paginas:
+            referencia += f", p. {paginas}"
+        else:
+            referencia += f", p. {paginas}" # Tem revista que tem só uma página
+    elif article_number:
+        referencia += f", {article_number}" # Substitui a falta de página pelo Artigo
 
-		if "-" in paginas:
-			referencia += f", p. {paginas}"
-		else:
-			referencia += f", {paginas}"
+    # Monta o final com a data
+    if dia and mes_formatado:
+        referencia += f", {dia} {mes_formatado} {ano}"
+    elif mes_formatado:
+        referencia += f", {mes_formatado} {ano}"
+    else:
+        referencia += f", {ano}"
 
-	if dia and mes_formatado:
-		referencia += f", {dia} {mes_formatado} {ano}"
-	elif mes_formatado:
-		referencia += f", {mes_formatado} {ano}"
-	else:
-		referencia += f", {ano}"
-
-	return referencia.rstrip(".") + "."
+    return referencia.rstrip(".") + "."
 
 def gerar_citacao(autores, ano):
+    # Se ano for None, define como [s.d.]
+    ano_str = ano if ano else "[s.d.]"
 
     if not autores:
-        return f"(Autor desconhecido, {ano})"
+        return f"(Autor desconhecido, {ano_str})"
 
     nomes = []
 
@@ -142,13 +179,13 @@ def gerar_citacao(autores, ano):
             nomes.append(sobrenome.title())
 
     if len(nomes) == 0:
-        return f"(Autor desconhecido, {ano})"
+        return f"(Autor desconhecido, {ano_str})"
 
     elif len(nomes) <= 3:
-        return f"({'; '.join(nomes)}, {ano})"
+        return f"({'; '.join(nomes)}, {ano_str})"
 
     else:
-        return f"({nomes[0]} et al., {ano})"
+        return f"({nomes[0]} et al., {ano_str})"
 
 # ===== RESULTADO DOI =====
 if st.session_state.data and not st.session_state.resultados_busca:
@@ -166,7 +203,7 @@ if st.session_state.data and not st.session_state.resultados_busca:
 		autores_str = "Autor desconhecido"
 
 	data_parts = data.get("issued", {}).get("date-parts", [[None]])
-	ano = data_parts[0][0]
+	ano = data_parts[0][0] if len(data_parts[0]) > 0 else None
 
 	st.write("### Resultado:")
 
@@ -174,7 +211,7 @@ if st.session_state.data and not st.session_state.resultados_busca:
 
 	autores = data.get("author", [])
 	data_parts = data.get("issued", {}).get("date-parts", [[None]])
-	ano = data_parts[0][0]
+	ano = data_parts[0][0] if len(data_parts[0]) > 0 else None
 
 	citacao = gerar_citacao(autores, ano)
 
@@ -184,8 +221,10 @@ if st.session_state.data and not st.session_state.resultados_busca:
 
 	st.success(f"Referência:\n\n{ref}")
 
-	if ref not in st.session_state.historico:
-		st.session_state.historico.append(ref)
+	# ===== histórico =====
+	if not st.session_state.limpou_tudo and ref != st.session_state.ref_ignorar:
+		if ref not in st.session_state.historico:
+			st.session_state.historico.append(ref)
 
 # ===== LISTA DE TÍTULOS =====
 if st.session_state.resultados_busca:
@@ -221,6 +260,8 @@ if st.session_state.resultados_busca:
 
 			if st.button("Selecionar", key=key_id):
 				st.session_state.selecionado = key_id
+				st.session_state.ref_ignorar = None
+				st.session_state.limpou_tudo = False
 
 		# 👇 FORA DA COLUNA → largura normal
 		if st.session_state.selecionado == key_id:
@@ -237,8 +278,9 @@ if st.session_state.resultados_busca:
 			st.success(f"Referência:\n\n{ref}")
 
 			# ===== histórico =====
-			if ref not in st.session_state.historico:
-				st.session_state.historico.append(ref)
+			if not st.session_state.limpou_tudo and ref != st.session_state.ref_ignorar:
+				if ref not in st.session_state.historico:
+					st.session_state.historico.append(ref)
 
 		st.markdown("---")
 
@@ -246,10 +288,38 @@ if st.session_state.resultados_busca:
 if submit and not entrada:
 	st.write("Digite um DOI ou título.")
 
+# ===== HISTÓRICO DE REFERÊNCIAS =====
 st.write("## 📚 Histórico de Referências")
 
-historico_ordenado = sorted(st.session_state.historico, key=str.lower)
+# Só mostra o histórico se ele não estiver vazio
+if st.session_state.historico:
+    
+    # Cria duas colunas para alinhar o botão "Limpar Tudo" à direita
+    col_vazia, col_limpar = st.columns([8, 2])
+    with col_limpar:
+        if st.button("🗑️ Limpar Tudo", use_container_width=True):
+            st.session_state.historico = []
+            st.session_state.limpou_tudo = True
+            st.rerun()
 
-for ref in historico_ordenado:
-	st.markdown(ref)
-	st.write("")  # espaço entre referências
+    st.markdown("---")
+
+    # Ordena o histórico alfabeticamente
+    historico_ordenado = sorted(st.session_state.historico, key=str.lower)
+
+    # O enumerate(historico_ordenado) serve para criar um ID único (i) para cada botão
+    for i, ref in enumerate(historico_ordenado):
+        col_texto, col_botao_del = st.columns([9, 1])
+
+        with col_texto:
+            st.markdown(ref)
+
+        with col_botao_del:
+            if st.button("❌", key=f"del_{i}"):
+                st.session_state.historico.remove(ref)
+                st.session_state.ref_ignorar = ref
+                st.rerun()
+        
+        st.write("") # Espaço entre as referências
+else:
+    st.info("Seu histórico está vazio. Faça uma busca para adicionar referências!")
