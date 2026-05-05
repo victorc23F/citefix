@@ -14,8 +14,8 @@ if "selecionado" not in st.session_state:
 if "historico" not in st.session_state:
 	st.session_state.historico = []
       
-if "ref_ignorar" not in st.session_state:
-	st.session_state.ref_ignorar = None
+if "apagados" not in st.session_state:
+	st.session_state.apagados = []
 
 if "limpou_tudo" not in st.session_state:
 	st.session_state.limpou_tudo = False
@@ -32,7 +32,7 @@ if submit:
 	st.session_state.resultados_busca = None
 	st.session_state.data = None
 	st.session_state.selecionado = None
-	st.session_state.ref_ignorar = None
+	st.session_state.apagados = []
 	st.session_state.limpou_tudo = False
 
 	if entrada:
@@ -222,7 +222,7 @@ if st.session_state.data and not st.session_state.resultados_busca:
 	st.success(f"Referência:\n\n{ref}")
 
 	# ===== histórico =====
-	if not st.session_state.limpou_tudo and ref != st.session_state.ref_ignorar:
+	if not st.session_state.limpou_tudo and ref not in st.session_state.apagados:
 		if ref not in st.session_state.historico:
 			st.session_state.historico.append(ref)
 
@@ -260,7 +260,7 @@ if st.session_state.resultados_busca:
 
 			if st.button("Selecionar", key=key_id):
 				st.session_state.selecionado = key_id
-				st.session_state.ref_ignorar = None
+				st.session_state.apagados = []
 				st.session_state.limpou_tudo = False
 
 		# 👇 FORA DA COLUNA → largura normal
@@ -278,7 +278,7 @@ if st.session_state.resultados_busca:
 			st.success(f"Referência:\n\n{ref}")
 
 			# ===== histórico =====
-			if not st.session_state.limpou_tudo and ref != st.session_state.ref_ignorar:
+			if not st.session_state.limpou_tudo and ref not in st.session_state.apagados:
 				if ref not in st.session_state.historico:
 					st.session_state.historico.append(ref)
 
@@ -317,7 +317,7 @@ if st.session_state.historico:
         with col_botao_del:
             if st.button("❌", key=f"del_{i}"):
                 st.session_state.historico.remove(ref)
-                st.session_state.ref_ignorar = ref
+                st.session_state.apagados.append(ref)
                 st.rerun()
         
         st.write("") # Espaço entre as referências
