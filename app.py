@@ -464,7 +464,7 @@ with tab_livros:
             if st.session_state.livro_selecionado == key_id_livro:
                 ref_livro = gerar_referencia_livro(item)
 
-                st.info(f"**Referência:**\n\n{ref_livro}")
+                st.success(f"**Referência:**\n\n{ref_livro}")
 
                 if not st.session_state.limpou_tudo and ref_livro not in st.session_state.apagados:
                     if ref_livro not in st.session_state.historico:
