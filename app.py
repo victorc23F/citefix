@@ -420,8 +420,8 @@ with tab_livros:
                             "ano": str(doc.get("first_publish_year", "[s.d.]")),
                             "fonte": "OpenLibrary"
                         })
-            except Exception:
-                pass
+            except Exception as e:
+                st.error(f"🚨 Erro invisível descoberto: {e}")
 
             # --- RESULTADO FINAL ---
             if livros_encontrados:
