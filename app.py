@@ -382,7 +382,12 @@ with tab_livros:
             # --- 1. BUSCA GOOGLE BOOKS ---
             try:
                 url_google = "https://www.googleapis.com/books/v1/volumes"
-                params_g = {"q": entrada_livro, "maxResults": 5, "key": st.secrets["GOOGLE_API_KEY"]} 
+                params_g = {
+                    "q": entrada_livro, 
+                    "maxResults": 5, 
+                    "key": st.secrets["GOOGLE_API_KEY"],
+                    "country": "BR"  # 👇 O passaporte brasileiro para liberar o acesso!
+                } 
                 resp_g = requests.get(url_google, params=params_g, timeout=5)
                 
                 if resp_g.status_code == 200:
@@ -397,13 +402,8 @@ with tab_livros:
                             "ano": str(info.get("publishedDate", "[s.d.]"))[:4],
                             "fonte": "Google Books"
                         })
-                else:
-                    # 👇 SE O GOOGLE RECUSAR, ELE VAI NOS MOSTRAR O MOTIVO EXATO!
-                    st.error(f"🚨 Google bloqueou a busca online. Código: {resp_g.status_code}")
-                    st.write(resp_g.text)
-                    
-            except Exception as e:
-                st.error(f"🚨 Erro no código: {e}")
+            except Exception:
+                pass # Se o Google der erro (ou a chave não estiver pronta), ele segue pro próximo
 
             # --- 2. BUSCA OPENLIBRARY ---
             try:
@@ -425,8 +425,8 @@ with tab_livros:
                             "ano": str(doc.get("first_publish_year", "[s.d.]")),
                             "fonte": "OpenLibrary"
                         })
-            except Exception as e:
-                st.error(f"🚨 Erro invisível descoberto: {e}")
+            except Exception:
+                pass
 
             # --- RESULTADO FINAL ---
             if livros_encontrados:
