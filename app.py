@@ -79,8 +79,16 @@ def formatar_primeiro_autor(autor):
 
 # ===== FUNÇÃO DE GERAR REFERÊNCIA =====
 def gerar_referencia(data):
-    # 1. Tratamento do Título e Pontuação
+    # 1. Tratamento do Título, Pontuação e Tags HTML
     titulo = data.get("title", ["Sem título"])[0].strip()
+    
+    # Filtro avançado para capturar as diferentes formas que o Crossref manda o itálico
+    titulo = titulo.replace("<i>", "*").replace("</i>", "*")
+    titulo = titulo.replace("<I>", "*").replace("</I>", "*")
+    titulo = titulo.replace("<italic>", "*").replace("</italic>", "*")
+    titulo = titulo.replace("<ITALIC>", "*").replace("</ITALIC>", "*")
+    titulo = titulo.replace("<em>", "*").replace("</em>", "*")
+    titulo = titulo.replace("&lt;i&gt;", "*").replace("&lt;/i&gt;", "*")
     
     # Se o título já terminar em pontuação, não adiciona o ponto final extra
     if titulo and titulo[-1] in ["?", "!", "."]:
@@ -192,7 +200,16 @@ if st.session_state.data and not st.session_state.resultados_busca:
 
 	data = st.session_state.data
 
-	titulo_item = data.get("title", ["Sem título"])[0]
+	# Pega o título e já aplica a limpeza de tags
+	titulo_item = data.get("title", ["Sem título"])[0].strip()
+	titulo_item = titulo_item.replace("<i>", "*").replace("</i>", "*")
+	titulo_item = titulo_item.replace("<I>", "*").replace("</I>", "*")
+	titulo_item = titulo_item.replace("<italic>", "*").replace("</italic>", "*")
+	titulo_item = titulo_item.replace("<ITALIC>", "*").replace("</ITALIC>", "*")
+	titulo_item = titulo_item.replace("<em>", "*").replace("</em>", "*")
+	titulo_item = titulo_item.replace("&lt;i&gt;", "*").replace("&lt;/i&gt;", "*")
+
+	autores = data.get("author", [])
 
 	autores = data.get("author", [])
 	if autores:
@@ -232,7 +249,15 @@ if st.session_state.resultados_busca:
 	st.write("### Selecione o artigo correto:")
 
 	for item in st.session_state.resultados_busca:
-		titulo_item = item.get("title", ["Sem título"])[0]
+		titulo_item = item.get("title", ["Sem título"])[0].strip()
+		
+		# Limpa as tags do título que aparece na lista
+		titulo_item = titulo_item.replace("<i>", "*").replace("</i>", "*")
+		titulo_item = titulo_item.replace("<I>", "*").replace("</I>", "*")
+		titulo_item = titulo_item.replace("<italic>", "*").replace("</italic>", "*")
+		titulo_item = titulo_item.replace("<ITALIC>", "*").replace("</ITALIC>", "*")
+		titulo_item = titulo_item.replace("<em>", "*").replace("</em>", "*")
+		titulo_item = titulo_item.replace("&lt;i&gt;", "*").replace("&lt;/i&gt;", "*")
 
 		# autores
 		autores = item.get("author", [])
