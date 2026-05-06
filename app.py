@@ -397,8 +397,8 @@ with tab_livros:
                             "ano": str(info.get("publishedDate", "[s.d.]"))[:4],
                             "fonte": "Google Books"
                         })
-            except Exception:
-                pass # Se o Google der erro (ou a chave não estiver pronta), ele segue pro próximo
+            except Exception as e:
+                st.error(f"🚨 Erro invisível descoberto: {e}")
 
             # --- 2. BUSCA OPENLIBRARY ---
             try:
