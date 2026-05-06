@@ -20,6 +20,185 @@ if "apagados" not in st.session_state:
 if "limpou_tudo" not in st.session_state:
 	st.session_state.limpou_tudo = False
 
+if "resultados_livros" not in st.session_state:
+    st.session_state.resultados_livros = None
+
+if "livro_selecionado" not in st.session_state:
+    st.session_state.livro_selecionado = None
+
+if "data_livro" not in st.session_state:
+    st.session_state.data_livro = None
+
+def formatar_primeiro_autor(autor):
+    family = autor.get("family", "")
+    given = autor.get("given", "")
+
+    if not family:
+        return "Autor desconhecido"
+
+    family = family.upper()
+
+    if given and given.split():
+        inicial = given.split()[0][0].upper()
+        return f"{family}, {inicial}."
+        
+    return family
+
+# ===== FUNÇÃO DE GERAR REFERÊNCIA =====
+def gerar_referencia(data):
+# 1. Tratamento do Título, Pontuação e Tags HTML
+    titulo = data.get("title", ["Sem título"])[0].strip()
+        
+    # Filtro avançado para capturar as diferentes formas que o Crossref manda o itálico
+    titulo = titulo.replace("<i>", "*").replace("</i>", "*")
+    titulo = titulo.replace("<I>", "*").replace("</I>", "*")
+    titulo = titulo.replace("<italic>", "*").replace("</italic>", "*")
+    titulo = titulo.replace("<ITALIC>", "*").replace("</ITALIC>", "*")
+    titulo = titulo.replace("<em>", "*").replace("</em>", "*")
+    titulo = titulo.replace("&lt;i&gt;", "*").replace("&lt;/i&gt;", "*")
+        
+    # Se o título já terminar em pontuação, não adiciona o ponto final extra
+    if titulo and titulo[-1] in ["?", "!", "."]:
+        titulo_com_pontuacao = titulo
+    else:
+        titulo_com_pontuacao = f"{titulo}."
+
+    # 2. Tratamento da Data (Ano vazio = [s.d.] - Sem Data)
+    data_parts = data.get("issued", {}).get("date-parts", [[None]])
+    ano = data_parts[0][0] if len(data_parts[0]) > 0 and data_parts[0][0] is not None else "[s.d.]"
+    mes = data_parts[0][1] if len(data_parts[0]) > 1 else ""
+    dia = data_parts[0][2] if len(data_parts[0]) > 2 else ""
+        
+    journal = data.get("container-title", [""])[0]
+    meses = ["jan.", "fev.", "mar.", "abr.", "maio", "jun.", "jul.", "ago.", "set.", "out.", "nov.", "dez."]
+    mes_formatado = meses[mes-1] if mes and isinstance(mes, int) and mes <= 12 else ""
+
+    volume = data.get("volume", "")
+    numero = data.get("issue", "")
+        
+    # 3. Tratamento de Páginas vs Article Number
+    paginas = data.get("page", "")
+    article_number = data.get("article-number", "") 
+
+    journal_formatado = f"*{journal}*" if journal else ""
+
+    # 4. Tratamento de Autores (Se não houver autor)
+    autores = data.get("author", [])
+    autores_formatados = []
+        
+    for autor in autores:
+        sobrenome = autor.get("family", "")
+        nome = autor.get("given", "")
+        if sobrenome: # Garante que só processa se o sobrenome existir
+            iniciais = " ".join([n[0].upper() + "." for n in nome.split() if n])
+            autores_formatados.append(f"{sobrenome.upper()}, {iniciais}")
+
+    if len(autores_formatados) >= 4:
+        autores_str = autores_formatados[0] + " et al."
+    elif len(autores_formatados) > 0:
+        autores_str = "; ".join(autores_formatados).rstrip(".")
+    else:
+        autores_str = "" # Sem autor
+
+    # 5. Montagem da Referência
+    if autores_str:
+        if autores_str.endswith("et al."):
+            referencia = f"{autores_str} {titulo_com_pontuacao}"
+        else:
+            referencia = f"{autores_str}. {titulo_com_pontuacao}"
+    else:
+        # Se não tem autor, a ABNT começa pelo título
+        referencia = f"{titulo_com_pontuacao}"
+
+    if journal_formatado:
+        referencia += f" {journal_formatado}"
+
+    if volume:
+        referencia += f", v. {volume}"
+
+    if numero:
+        referencia += f", n. {numero}"
+
+    # Adiciona a página ou o article number
+    if paginas:
+        paginas = paginas.strip()
+        if "-" in paginas:
+            referencia += f", p. {paginas}"
+        else:
+            referencia += f", p. {paginas}" # Tem revista que tem só uma página
+    elif article_number:
+        referencia += f", {article_number}" # Substitui a falta de página pelo Artigo
+
+    # Monta o final com a data
+    if dia and mes_formatado:
+        referencia += f", {dia} {mes_formatado} {ano}"
+    elif mes_formatado:
+        referencia += f", {mes_formatado} {ano}"
+    else:
+        referencia += f", {ano}"
+
+    return referencia.rstrip(".") + "."
+
+def gerar_citacao(autores, ano):
+    # Se ano for None, define como [s.d.]
+    ano_str = ano if ano else "[s.d.]"
+
+    if not autores:
+        return f"(Autor desconhecido, {ano_str})"
+
+    nomes = []
+
+    for a in autores:
+        sobrenome = a.get("family", "")
+        if sobrenome:
+            nomes.append(sobrenome.title())
+
+    if len(nomes) == 0:
+        return f"(Autor desconhecido, {ano_str})"
+
+    elif len(nomes) <= 3:
+        return f"({'; '.join(nomes)}, {ano_str})"
+
+    else:
+        return f"({nomes[0]} et al., {ano_str})"
+    
+# ===== FUNÇÃO DE GERAR REFERÊNCIA - LIVROS =====
+def gerar_referencia_livro(livro):
+    # Os dados agora já vêm padronizados da nossa busca dupla!
+    titulo = livro.get("titulo", "Sem título").strip()
+    subtitulo = livro.get("subtitulo", "").strip()
+    
+    autores = livro.get("autores", [])
+    autores_formatados = []
+    
+    for nome_completo in autores:
+        partes = nome_completo.split()
+        if partes:
+            sobrenome = partes[-1].upper()
+            nome = " ".join(partes[:-1])
+            iniciais = " ".join([n[0].upper() + "." for n in nome.split() if n])
+            autores_formatados.append(f"{sobrenome}, {iniciais}")
+
+    if len(autores_formatados) >= 4:
+        autores_str = autores_formatados[0] + " et al."
+    elif len(autores_formatados) > 0:
+        autores_str = "; ".join(autores_formatados)
+    else:
+        autores_str = "AUTOR DESCONHECIDO"
+
+    editora = livro.get("editora", "[s.n.]")
+    cidade = "[s.l.]" 
+    ano = livro.get("ano", "[s.d.]")
+
+    titulo_formatado = f"*{titulo}*"
+    
+    if subtitulo:
+         referencia = f"{autores_str}. {titulo_formatado}: {subtitulo}. {cidade}: {editora}, {ano}."
+    else:
+         referencia = f"{autores_str}. {titulo_formatado}. {cidade}: {editora}, {ano}."
+         
+    return referencia
+
 st.title("CiteFix - Gerador de Referências")
 
 # ===== CRIAÇÃO DAS ABAS =====
@@ -70,139 +249,6 @@ with tab_artigos:
                         st.session_state.resultados_busca = resultados
                 else:
                     st.error("Erro ao buscar título.")
-
-    def formatar_primeiro_autor(autor):
-        family = autor.get("family", "")
-        given = autor.get("given", "")
-
-        if not family:
-            return "Autor desconhecido"
-
-        family = family.upper()
-
-        if given and given.split():
-            inicial = given.split()[0][0].upper()
-            return f"{family}, {inicial}."
-        
-        return family
-
-    # ===== FUNÇÃO DE GERAR REFERÊNCIA =====
-    def gerar_referencia(data):
-        # 1. Tratamento do Título, Pontuação e Tags HTML
-        titulo = data.get("title", ["Sem título"])[0].strip()
-        
-        # Filtro avançado para capturar as diferentes formas que o Crossref manda o itálico
-        titulo = titulo.replace("<i>", "*").replace("</i>", "*")
-        titulo = titulo.replace("<I>", "*").replace("</I>", "*")
-        titulo = titulo.replace("<italic>", "*").replace("</italic>", "*")
-        titulo = titulo.replace("<ITALIC>", "*").replace("</ITALIC>", "*")
-        titulo = titulo.replace("<em>", "*").replace("</em>", "*")
-        titulo = titulo.replace("&lt;i&gt;", "*").replace("&lt;/i&gt;", "*")
-        
-        # Se o título já terminar em pontuação, não adiciona o ponto final extra
-        if titulo and titulo[-1] in ["?", "!", "."]:
-            titulo_com_pontuacao = titulo
-        else:
-            titulo_com_pontuacao = f"{titulo}."
-
-        # 2. Tratamento da Data (Ano vazio = [s.d.] - Sem Data)
-        data_parts = data.get("issued", {}).get("date-parts", [[None]])
-        ano = data_parts[0][0] if len(data_parts[0]) > 0 and data_parts[0][0] is not None else "[s.d.]"
-        mes = data_parts[0][1] if len(data_parts[0]) > 1 else ""
-        dia = data_parts[0][2] if len(data_parts[0]) > 2 else ""
-        
-        journal = data.get("container-title", [""])[0]
-        meses = ["jan.", "fev.", "mar.", "abr.", "maio", "jun.", "jul.", "ago.", "set.", "out.", "nov.", "dez."]
-        mes_formatado = meses[mes-1] if mes and isinstance(mes, int) and mes <= 12 else ""
-
-        volume = data.get("volume", "")
-        numero = data.get("issue", "")
-        
-        # 3. Tratamento de Páginas vs Article Number
-        paginas = data.get("page", "")
-        article_number = data.get("article-number", "") 
-
-        journal_formatado = f"*{journal}*" if journal else ""
-
-        # 4. Tratamento de Autores (Se não houver autor)
-        autores = data.get("author", [])
-        autores_formatados = []
-        
-        for autor in autores:
-            sobrenome = autor.get("family", "")
-            nome = autor.get("given", "")
-            if sobrenome: # Garante que só processa se o sobrenome existir
-                iniciais = " ".join([n[0].upper() + "." for n in nome.split() if n])
-                autores_formatados.append(f"{sobrenome.upper()}, {iniciais}")
-
-        if len(autores_formatados) >= 4:
-            autores_str = autores_formatados[0] + " et al."
-        elif len(autores_formatados) > 0:
-            autores_str = "; ".join(autores_formatados).rstrip(".")
-        else:
-            autores_str = "" # Sem autor
-
-        # 5. Montagem da Referência
-        if autores_str:
-            if autores_str.endswith("et al."):
-                referencia = f"{autores_str} {titulo_com_pontuacao}"
-            else:
-                referencia = f"{autores_str}. {titulo_com_pontuacao}"
-        else:
-            # Se não tem autor, a ABNT começa pelo título
-            referencia = f"{titulo_com_pontuacao}"
-
-        if journal_formatado:
-            referencia += f" {journal_formatado}"
-
-        if volume:
-            referencia += f", v. {volume}"
-
-        if numero:
-            referencia += f", n. {numero}"
-
-        # Adiciona a página ou o article number
-        if paginas:
-            paginas = paginas.strip()
-            if "-" in paginas:
-                referencia += f", p. {paginas}"
-            else:
-                referencia += f", p. {paginas}" # Tem revista que tem só uma página
-        elif article_number:
-            referencia += f", {article_number}" # Substitui a falta de página pelo Artigo
-
-        # Monta o final com a data
-        if dia and mes_formatado:
-            referencia += f", {dia} {mes_formatado} {ano}"
-        elif mes_formatado:
-            referencia += f", {mes_formatado} {ano}"
-        else:
-            referencia += f", {ano}"
-
-        return referencia.rstrip(".") + "."
-
-    def gerar_citacao(autores, ano):
-        # Se ano for None, define como [s.d.]
-        ano_str = ano if ano else "[s.d.]"
-
-        if not autores:
-            return f"(Autor desconhecido, {ano_str})"
-
-        nomes = []
-
-        for a in autores:
-            sobrenome = a.get("family", "")
-            if sobrenome:
-                nomes.append(sobrenome.title())
-
-        if len(nomes) == 0:
-            return f"(Autor desconhecido, {ano_str})"
-
-        elif len(nomes) <= 3:
-            return f"({'; '.join(nomes)}, {ano_str})"
-
-        else:
-            return f"({nomes[0]} et al., {ano_str})"
 
     # ===== RESULTADO DOI =====
     if st.session_state.data and not st.session_state.resultados_busca:
@@ -320,7 +366,106 @@ with tab_artigos:
 
 # ===== ABA 2: LIVROS =====
 with tab_livros:
-    st.info("Em breve: Busca automática de livros por título, autor ou ISBN.")
+    with st.form("form_busca_livro"):
+        entrada_livro = st.text_input("Digite o Título, Autor ou ISBN do livro:")
+        submit_livro = st.form_submit_button("Buscar Livro")
+
+    if submit_livro:
+        st.session_state.resultados_livros = None
+        st.session_state.livro_selecionado = None
+        st.session_state.apagados = []
+        st.session_state.limpou_tudo = False
+
+        if entrada_livro:
+            livros_encontrados = []
+            
+            # --- 1. BUSCA GOOGLE BOOKS ---
+            try:
+                url_google = "https://www.googleapis.com/books/v1/volumes"
+                params_g = {"q": entrada_livro, "maxResults": 5, "key": st.secrets["GOOGLE_API_KEY"]} 
+                resp_g = requests.get(url_google, params=params_g, timeout=5)
+                
+                if resp_g.status_code == 200:
+                    for item in resp_g.json().get("items", []):
+                        info = item.get("volumeInfo", {})
+                        livros_encontrados.append({
+                            "id": item.get("id", "g_desc"),
+                            "titulo": info.get("title", "Sem título"),
+                            "subtitulo": info.get("subtitle", ""),
+                            "autores": info.get("authors", []),
+                            "editora": info.get("publisher", "[s.n.]"),
+                            "ano": str(info.get("publishedDate", "[s.d.]"))[:4],
+                            "fonte": "Google Books"
+                        })
+            except Exception:
+                pass # Se o Google der erro (ou a chave não estiver pronta), ele segue pro próximo
+
+            # --- 2. BUSCA OPENLIBRARY ---
+            try:
+                url_ol = "https://openlibrary.org/search.json"
+                params_ol = {"q": entrada_livro, "limit": 5}
+                resp_ol = requests.get(url_ol, params=params_ol, timeout=8)
+                
+                if resp_ol.status_code == 200:
+                    for doc in resp_ol.json().get("docs", []):
+                        # O OpenLibrary às vezes manda a editora como uma lista, então pegamos a primeira
+                        editora_ol = doc.get("publisher", ["[s.n.]"])[0] if doc.get("publisher") else "[s.n.]"
+                        
+                        livros_encontrados.append({
+                            "id": str(doc.get("key", "ol_desc")),
+                            "titulo": doc.get("title", "Sem título"),
+                            "subtitulo": "", # OL raramente separa subtítulo, vai ficar junto do título
+                            "autores": doc.get("author_name", []),
+                            "editora": editora_ol,
+                            "ano": str(doc.get("first_publish_year", "[s.d.]")),
+                            "fonte": "OpenLibrary"
+                        })
+            except Exception:
+                pass
+
+            # --- RESULTADO FINAL ---
+            if livros_encontrados:
+                st.session_state.resultados_livros = livros_encontrados
+            else:
+                st.error("Nenhum livro encontrado em nenhuma das bases.")
+        else:
+            st.warning("Digite um termo para buscar.")
+
+    # ===== EXIBIÇÃO DOS LIVROS =====
+    if st.session_state.resultados_livros:
+        st.write("### Selecione o livro correto:")
+
+        for item in st.session_state.resultados_livros:
+            titulo_item = item.get("titulo", "Sem título")
+            autores = item.get("autores", ["Autor desconhecido"])
+            autores_str = ", ".join(autores)
+            ano_pub = item.get("ano", "[s.d.]")
+            fonte = item.get("fonte", "")
+
+            col1, col2 = st.columns([8, 2])
+
+            with col1:
+                st.markdown(f"**{titulo_item}**")
+                # Mostramos uma tag visual para o usuário saber de onde a informação veio
+                st.markdown(f"*{autores_str} ({ano_pub})* — 🏷️ Base: {fonte}")
+
+            with col2:
+                key_id_livro = item.get("id")
+                if st.button("Selecionar", key=key_id_livro):
+                    st.session_state.livro_selecionado = key_id_livro
+                    st.session_state.apagados = []
+                    st.session_state.limpou_tudo = False
+
+            if st.session_state.livro_selecionado == key_id_livro:
+                ref_livro = gerar_referencia_livro(item)
+
+                st.info(f"**Referência:**\n\n{ref_livro}")
+
+                if not st.session_state.limpou_tudo and ref_livro not in st.session_state.apagados:
+                    if ref_livro not in st.session_state.historico:
+                        st.session_state.historico.append(ref_livro)
+
+            st.markdown("---")
 
 # ===== ABA 3: MANUAL =====
 with tab_manual:
