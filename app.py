@@ -397,8 +397,13 @@ with tab_livros:
                             "ano": str(info.get("publishedDate", "[s.d.]"))[:4],
                             "fonte": "Google Books"
                         })
+                else:
+                    # 👇 SE O GOOGLE RECUSAR, ELE VAI NOS MOSTRAR O MOTIVO EXATO!
+                    st.error(f"🚨 Google bloqueou a busca online. Código: {resp_g.status_code}")
+                    st.write(resp_g.text)
+                    
             except Exception as e:
-                st.error(f"🚨 Erro invisível descoberto: {e}")
+                st.error(f"🚨 Erro no código: {e}")
 
             # --- 2. BUSCA OPENLIBRARY ---
             try:
