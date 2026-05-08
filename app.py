@@ -297,7 +297,7 @@ def gerar_referencia(data):
         cidade = data.get("publisher-location", "[s.l.]")
         volume = pegar_volume(data)
         subtitulo = data.get("subtitle", [""])[0] if data.get("subtitle") else ""
-        ref = f"{autores_finais}. *{titulo.rstrip('.')}*"
+        ref = f"{autores_finais.rstrip('.')}. *{titulo.rstrip('.')}*"
         if subtitulo: ref += f": {subtitulo}"
         ref += f". {cidade}: {editora}, {ano}."
         if volume: ref += f" v. {volume}."
@@ -311,7 +311,7 @@ def gerar_referencia(data):
         if len(container_titles) > 1: livro_titulo, serie = container_titles[0], container_titles[1]
         elif len(container_titles) == 1: livro_titulo = container_titles[0]
         else: livro_titulo = "Sem título do livro"
-        ref = f"{autores_str} {titulo} *In*: "
+        ref = f"{autores_str.rstrip('.')}. {titulo} *In*: "
         if editores_str != "AUTOR DESCONHECIDO": ref += f"{editores_str} (Ed.). "
         ref += f"*{livro_titulo}*. "
         if serie: ref += f"{serie}. "
@@ -325,7 +325,7 @@ def gerar_referencia(data):
     elif tipo in ["proceedings-article", "paper-conference"]:
         nome_evento = data.get("container-title", data.get("event", {}).get("name", ["Anais do Evento"]))
         if isinstance(nome_evento, list): nome_evento = nome_evento[0]
-        ref = f"{autores_str} {titulo} *In*: {nome_evento.upper()}, {ano}. *Anais* [...]. [s.l.]: {editora}, {ano}."
+        ref = f"{autores_str.rstrip('.')}. {titulo} *In*: {nome_evento.upper()}, {ano}. *Anais* [...]. [s.l.]: {editora}, {ano}."
         if paginas: ref += f" p. {paginas}."
         return ref
 
@@ -334,7 +334,7 @@ def gerar_referencia(data):
         numero = data.get("issue", "")
         volume = pegar_volume(data) 
         if isinstance(numero, list) and numero: numero = str(numero[0])
-        ref = f"{autores_str} {titulo}"
+        ref = f"{autores_str.rstrip('.')}. {titulo}"
         if journal: ref += f" *{journal}*"
         if volume: ref += f", v. {volume}"
         if numero: ref += f", n. {numero}"
@@ -365,8 +365,8 @@ def gerar_referencia_livro(livro):
     cidade = "[s.l.]" 
     ano = livro.get("ano", "[s.d.]")
     titulo_formatado = f"*{titulo}*"
-    if subtitulo: referencia = f"{autores_str}. {titulo_formatado}: {subtitulo}. {cidade}: {editora}, {ano}."
-    else: referencia = f"{autores_str}. {titulo_formatado}. {cidade}: {editora}, {ano}."
+    if subtitulo: referencia = f"{autores_str.rstrip('.')}. {titulo_formatado}: {subtitulo}. {cidade}: {editora}, {ano}."
+    else: referencia = f"{autores_str.rstrip('.')}. {titulo_formatado}. {cidade}: {editora}, {ano}."
     return referencia
 
 # ===== CABEÇALHO DO APP =====
