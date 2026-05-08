@@ -70,7 +70,6 @@ st.markdown("""
             transition: all 0.2s ease !important;
         }
         
-        /* Adiciona a lupa apenas aos campos de busca com o ID específico (evita bugar a aba 3) */
         input[aria-label="Busca"] {
             padding-right: 45px !important; 
             background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="%2394A3B8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>');
@@ -95,25 +94,7 @@ st.markdown("""
             padding: 2px 8px !important;
         }
 
-        /* ===== BOTÕES SECUNDÁRIOS (ESTRELA E FECHAR) ===== */
-        button[kind="secondary"] {
-            background: transparent !important;
-            border: none !important;
-            box-shadow: none !important;
-            color: #F59E0B !important;
-            font-size: 1.8rem !important;
-            padding: 0 !important;
-            height: auto !important;
-            line-height: 1 !important;
-            margin-top: -5px !important;
-            transition: all 0.2s ease;
-        }
-        button[kind="secondary"]:hover {
-            transform: scale(1.15);
-            color: #D97706 !important;
-        }
-
-        /* Botão Primário */
+        /* ===== BOTÕES PRIMÁRIOS ===== */
         button[kind="primary"] {
             border-radius: 8px !important;
             background-color: #0F766E !important;
@@ -126,6 +107,54 @@ st.markdown("""
         button[kind="primary"]:hover {
             background-color: #115E59 !important;
             transform: translateY(-2px);
+        }
+
+        /* ===== BOTÃO SECUNDÁRIO (Botão Limpar Histórico) ===== */
+        button[kind="secondary"] {
+            background-color: transparent !important;
+            border: 1px solid #CBD5E1 !important;
+            color: #64748B !important;
+            border-radius: 8px !important;
+            font-weight: 600 !important;
+            transition: all 0.2s ease !important;
+            padding: 10px 0 !important;
+        }
+        button[kind="secondary"]:hover {
+            border-color: #EF4444 !important;
+            color: #EF4444 !important;
+            background-color: #FEF2F2 !important;
+        }
+
+        /* ===== ÍCONES FLUTUANTES (ESTRELA E X) ===== */
+        button[title="Favoritar"], button[title="Remover do histórico"] {
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            padding: 0 !important;
+            height: auto !important;
+            line-height: 1 !important;
+            margin-top: -5px !important;
+        }
+        button[title="Favoritar"] {
+            color: #F59E0B !important;
+            font-size: 1.8rem !important;
+        }
+        button[title="Favoritar"]:hover {
+            transform: scale(1.15);
+            color: #D97706 !important;
+            background: transparent !important;
+            border: none !important;
+        }
+        button[title="Remover do histórico"] {
+            color: #94A3B8 !important;
+            font-size: 1.2rem !important;
+            margin-top: 0 !important;
+        }
+        button[title="Remover do histórico"]:hover {
+            transform: scale(1.15);
+            color: #EF4444 !important;
+            background: transparent !important;
+            border: none !important;
         }
 
         /* ===== CARDS DE RESULTADOS E SETINHA (EXPANDER) ===== */
@@ -416,7 +445,7 @@ with tab_artigos:
                     c_star, c_link = st.columns(2, vertical_alignment="top")
                     with c_star:
                         is_saved = any(i.get('ref') == ref for i in st.session_state.historico)
-                        st.button("★" if is_saved else "☆", key="star_doi", type="secondary", on_click=toggle_historico, args=(ref, url_link))
+                        st.button("★" if is_saved else "☆", key="star_doi", help="Favoritar", type="secondary", on_click=toggle_historico, args=(ref, url_link))
                     with c_link:
                         if url_link:
                             st.markdown(f"<div style='text-align: center; margin-top: -2px;'><a href='{url_link}' target='_blank' style='text-decoration:none; font-size:1.4rem; color:#64748B;' title='Acessar Documento'>🔗</a></div>", unsafe_allow_html=True)
@@ -450,7 +479,7 @@ with tab_artigos:
                         c_star, c_link = st.columns(2, vertical_alignment="top")
                         with c_star:
                             is_saved = any(i.get('ref') == ref for i in st.session_state.historico)
-                            st.button("★" if is_saved else "☆", key=f"star_art_{idx}", type="secondary", on_click=toggle_historico, args=(ref, url_link))
+                            st.button("★" if is_saved else "☆", key=f"star_art_{idx}", help="Favoritar", type="secondary", on_click=toggle_historico, args=(ref, url_link))
                         with c_link:
                             if url_link:
                                 st.markdown(f"<div style='text-align: center; margin-top: -2px;'><a href='{url_link}' target='_blank' style='text-decoration:none; font-size:1.4rem; color:#64748B;' title='Acessar Documento'>🔗</a></div>", unsafe_allow_html=True)
@@ -537,7 +566,7 @@ with tab_livros:
                         c_star, c_link = st.columns(2, vertical_alignment="top")
                         with c_star:
                             is_saved = any(i.get('ref') == ref_livro for i in st.session_state.historico)
-                            st.button("★" if is_saved else "☆", key=f"star_livro_{idx}", type="secondary", on_click=toggle_historico, args=(ref_livro, url_link))
+                            st.button("★" if is_saved else "☆", key=f"star_livro_{idx}", help="Favoritar", type="secondary", on_click=toggle_historico, args=(ref_livro, url_link))
                         with c_link:
                             if url_link:
                                 st.markdown(f"<div style='text-align: center; margin-top: -2px;'><a href='{url_link}' target='_blank' style='text-decoration:none; font-size:1.4rem; color:#64748B;' title='Acessar Livro'>🔗</a></div>", unsafe_allow_html=True)
@@ -550,20 +579,19 @@ with tab_manual:
     with st.form("form_tcc"):
         col1, col2 = st.columns(2)
         with col1:
-            autor_m = st.text_input("Autor (Nome Completo)", placeholder="Ex: Gabriel Almeida Ferreira")
-            titulo_m = st.text_input("Título do Trabalho", placeholder="Ex: Ocorrência de Amazona aestiva em meio urbano")
+            autor_m = st.text_input("Autor (Nome Completo)", placeholder="Ex: Ana Maria da Silva")
+            titulo_m = st.text_input("Título do Trabalho", placeholder="Ex: O impacto da inteligência artificial na educação")
             tipo_m = st.selectbox("Tipo de Documento", ["Trabalho de Conclusão de Curso", "Dissertação", "Tese", "Monografia"])
         with col2:
-            curso_m = st.text_input("Grau e Curso", placeholder="Ex: Bacharelado em Medicina Veterinária")
-            inst_m = st.text_input("Instituição", placeholder="Ex: Centro Universitário de João Pessoa")
-            cidade_m = st.text_input("Cidade", placeholder="Ex: João Pessoa")
-            ano_m = st.text_input("Ano da Defesa", placeholder="Ex: 2026")
+            curso_m = st.text_input("Grau e Curso", placeholder="Ex: Bacharelado em Ciência da Computação")
+            inst_m = st.text_input("Instituição", placeholder="Ex: Universidade de São Paulo")
+            cidade_m = st.text_input("Cidade", placeholder="Ex: São Paulo")
+            ano_m = st.text_input("Ano da Defesa", placeholder="Ex: 2024")
             
         submit_manual = st.form_submit_button("Gerar Referência ABNT", type="primary", use_container_width=True)
         
     if submit_manual:
         if autor_m and titulo_m and ano_m:
-            # Formatação do Autor
             partes = autor_m.strip().split()
             if len(partes) > 1:
                 sobrenome = partes[-1].upper()
@@ -574,7 +602,6 @@ with tab_manual:
                 autor_fmt = autor_m.upper()
                 cit_fmt = autor_m.title()
             
-            # Monta a Estrutura ABNT
             ref_manual_txt = f"{autor_fmt}. *{titulo_m.rstrip('.')}*. {ano_m}. {tipo_m} ({curso_m}) - {inst_m}, {cidade_m}, {ano_m}."
             citacao_manual_txt = f"({cit_fmt}, {ano_m})"
             
@@ -593,18 +620,19 @@ with tab_manual:
                 c_star, c_link = st.columns(2, vertical_alignment="top")
                 with c_star:
                     is_saved = any(i.get('ref') == st.session_state.ref_manual for i in st.session_state.historico)
-                    st.button("★" if is_saved else "☆", key="star_manual", type="secondary", on_click=toggle_historico, args=(st.session_state.ref_manual, ""))
+                    st.button("★" if is_saved else "☆", key="star_manual", help="Favoritar", type="secondary", on_click=toggle_historico, args=(st.session_state.ref_manual, ""))
 
 # ===== ABA 4: HISTÓRICO =====
 with tab_historico:
-    col_titulo, col_limpar = st.columns([7, 3], vertical_alignment="bottom")
+    # O botão de limpar histórico agora ocupa o lado direito e tem uma lixeira
+    col_titulo, col_limpar = st.columns([7.5, 2.5], vertical_alignment="bottom")
     
     with col_titulo:
         st.markdown("### Repositório de Referências")
         
     if st.session_state.historico:
         with col_limpar:
-            if st.button("Limpar Histórico", type="primary", use_container_width=True):
+            if st.button("🗑️ Limpar Histórico", type="secondary", use_container_width=True):
                 st.session_state.historico = []
                 st.session_state.limpou_tudo = True
                 st.rerun()
